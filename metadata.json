@@ -1,0 +1,6 @@
+{
+  "name": "Watersilk Tissue - Sales & Intelligence Dashboard",
+  "description": "Hệ thống quản lý, tự động hóa xử lý báo cáo đa định dạng (ảnh, PDF, Excel, Word), phân tích doanh số đa kênh và dự báo xu hướng tiêu thụ giấy tissue Watersilk.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
