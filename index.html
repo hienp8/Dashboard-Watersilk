@@ -16,12 +16,13 @@ select,input[type=file],button.b{font:inherit;padding:5px 8px;background:var(--c
 .tw{overflow-x:auto}table{border-collapse:collapse;width:100%;font-size:12.5px}th,td{padding:5px 8px;border-bottom:1px solid var(--line);text-align:right;white-space:nowrap}th:first-child,td:first-child{text-align:left}th{color:var(--mut);font-weight:500}
 .r{display:grid;grid-template-columns:130px 1fr 150px;gap:8px;align-items:center;margin:5px 0;font-size:12.5px}.br{height:12px;background:var(--line);border-radius:3px;overflow:hidden}.br i{display:block;height:100%;background:var(--ac)}.r em{font-style:normal;text-align:right}
 .n{font-size:12px;color:var(--mut)}.bad{color:var(--bad)}.ok{color:var(--ok)}pre{background:var(--card);border:1px solid var(--line);border-radius:6px;padding:8px;font-size:12px;white-space:pre-wrap;max-height:260px;overflow:auto}
+.kc{border-left:4px solid var(--ac)}.kc small{font-size:12px;font-weight:400;color:var(--mut)}.dl{font-size:12px;margin-top:4px;line-height:1.5}.pb{height:6px;background:var(--line);border-radius:3px;margin:6px 0 2px;overflow:hidden}.pb i{display:block;height:100%;background:var(--ac)}.lg{font-size:12px;color:var(--mut);display:flex;gap:14px}.lg i{display:inline-block;width:18px;height:3px;vertical-align:middle;margin-right:4px}.g2{display:grid;grid-template-columns:repeat(auto-fit,minmax(340px,1fr));gap:14px}.fb{position:sticky;top:0;z-index:5;background:var(--bg);padding:8px 0}
 </style></head><body>
 <header><h1>Watersilk · Cuộn lớn · Gỗ dán – Theo dõi kinh doanh</h1><p id="st">Đang tải dữ liệu…</p></header>
 <nav id="nav"></nav><main id="app"></main>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script>
-let D={sales:[],xnt:[],tt:[],plan:[],comp:[],prices:{}},S={y:0,m:0,r:'',n:'',g:'',it:'tt0',y1:0,y2:0,pr:'tp',sec:'',tax:0,area:'',item:'',bs:0,uy:0,um:0},T=0,LOG=[];
+let D={sales:[],xnt:[],tt:[],plan:[],kh:[],comp:[],prices:{}},S={y:0,m:0,r:'',n:'',g:'',it:'tt0',y1:0,y2:0,pr:'tp',sec:'',tax:0,area:'',item:'',bs:0,uy:0,um:0},T=0,LOG=[];
 const $=s=>document.querySelector(s),f=(n,d=1)=>n==null||isNaN(n)?'–':n.toLocaleString('vi-VN',{minimumFractionDigits:d,maximumFractionDigits:d}),sum=(a,i)=>a.reduce((s,r)=>s+(r[i]||0),0),B=1e9;
 const MN=['Tất cả tháng',...Array.from({length:12},(_,i)=>'Tháng '+(i+1))];
 const uniq=a=>[...new Set(a)];
@@ -30,35 +31,59 @@ const tbl=(h,rows)=>`<div class="tw"><table><tr>${h.map(x=>`<th>${x}</th>`).join
 const bar=(l,v,mx,t)=>`<div class="r"><span>${l}</span><div class="br"><i style="width:${mx?Math.max(0,Math.min(100,v/mx*100)):0}%"></i></div><em>${t}</em></div>`;
 const pc=(a,b)=>b?`<span class="${a/b-1<-.05?'bad':a/b-1>.05?'ok':''}">${a/b-1>0?'+':''}${f((a/b-1)*100,0)}%</span>`:'–';
 const years=()=>uniq([...D.xnt,...D.sales,...D.tt].map(r=>r[0])).filter(y=>y).sort((a,b)=>b-a);
-function init(){const ys=years();if(!S.y)S.y=ys[0]||2026;S.y1=S.y1||ys[0];S.y2=S.y2||ys[1]||ys[0];S.uy=S.uy||0;const ps=D.prices;S.sec=S.sec||'';
+function init(){const ys=years();if(!S.y)S.y=ys[0]||2026;S.y1=S.y1||ys[0];S.y2=S.y2||ys[1]||ys[0];S.uy=S.uy||0;S.m2=S.m2||0;S.mt=S.mt||'cl';D.kh=D.kh||[];const ps=D.prices;S.sec=S.sec||'';
  const cs=D.comp;if(cs.length){const l=cs.map(c=>c[0]*100+c[1]).sort((a,b)=>b-a)[0];S.area=S.area||cs.find(c=>c[0]*100+c[1]==l)[2];S.item=S.item||'Giấy vệ sinh có lõi'}
  $('#st').textContent=`Dữ liệu: ${D.sales.length.toLocaleString('vi-VN')} dòng bán hàng · ${D.xnt.length.toLocaleString('vi-VN')} dòng xuất nhập tồn NPP · sản lượng ${D.tt.length?Math.min(...D.tt.map(r=>r[0])):'–'}–${D.tt.length?Math.max(...D.tt.map(r=>r[0])):'–'}`}
 const TABS=['Tổng quan','Nhà phân phối','Bán hàng','Sản lượng','Bảng giá','Giá đối thủ','Cập nhật dữ liệu'];
 $('#nav').innerHTML=TABS.map((t,i)=>`<button onclick="T=${i};draw()">${t}</button>`).join('');
-const inR=r=>r[0]==S.y&&(!S.m||r[1]==S.m);
+const inR=r=>r[0]==S.y&&((!S.m&&!S.m2)||(r[1]>=(S.m||1)&&r[1]<=(S.m2||12))),ir=r=>r[0]==S.y&&r[1]>=(S.m||1)&&r[1]<=(S.m2||12);
 function lastClose(rows){const ms=uniq(rows.map(r=>r[1])).sort((a,b)=>b-a);return ms.length?sum(rows.filter(r=>r[1]==ms[0]),7):null}
-function V0(){const ys=years(),yo=ys.map(y=>[y,y]);return sel('y','Năm',yo)+sel('m','Tháng',MN.map((t,i)=>[i,t]))}
-function tab0(){const x=D.xnt.filter(inR),sl=D.sales.filter(inR),tt=D.tt.filter(inR),tp=D.tt.filter(r=>r[0]==S.y-1&&(!S.m||r[1]==S.m));
- const mc=S.m?x.filter(r=>r[1]==S.m):x,nh=sum(x,5),xu=sum(x,6),tc=S.m?sum(x,7):lastClose(x);
- const kp=(v,l)=>`<div class="kc"><b>${v}</b><span>${l}</span></div>`;
- let h=`<div class="fl">${V0()}</div><div class="k">${kp(sl.length?f(sum(sl,6)/B,2)+' tỷ':'–','Doanh số bán hàng thuần (sau CK)')}${kp(x.length?f(nh/B,2)+' tỷ':'–','NPP nhập hàng')}${kp(x.length?f(xu/B,2)+' tỷ':'–','NPP xuất hàng')}${kp(tc!=null?f(tc/B,2)+' tỷ':'–','Tồn cuối NPP'+(xu&&tc?' ('+f(tc/(xu/(S.m?1:uniq(x.map(r=>r[1])).length)),1)+' tháng bán)':''))}</div>`;
- h+=`<div class="k">${[['Cuộn lớn (tấn)',2],['Thành phẩm (tấn)',3],['Gỗ dán (m³)',4]].map(([l,i])=>kp(tt.length?f(sum(tt,i),1)+' '+pc(sum(tt,i),sum(tp,i)):'–',l+' · so với năm trước')).join('')}</div>`;
- const mx=Math.max(1,...D.xnt.filter(r=>r[0]==S.y||r[0]==S.y-1).map(r=>r[5]));
- const mm=m=>sum(D.xnt.filter(r=>r[0]==S.y&&r[1]==m),5),pm=m=>sum(D.xnt.filter(r=>r[0]==S.y-1&&r[1]==m),5);
- h+=`<div class="bx"><h2>NPP nhập hàng theo tháng, ${S.y} so với ${S.y-1} (tỷ đồng)</h2>${Array.from({length:12},(_,i)=>i+1).map(m=>bar('T'+m,mm(m),Math.max(...Array.from({length:12},(_,i)=>Math.max(mm(i+1),pm(i+1))),1),f(mm(m)/B,2)+' / '+f(pm(m)/B,2))).join('')}</div>`;
- const pl=D.plan.filter(inR),ar=uniq(pl.map(r=>r[2]));
- if(pl.length)h+=`<div class="bx"><h2>Khoán và thực hiện theo khu vực (tỷ đồng)</h2>${tbl(['Khu vực','Khoán','Thực hiện / số liệu','% đạt'],ar.map(a=>{const p=pl.filter(r=>r[2]==a),k=sum(p,3),t=sum(p,4);return [a,f(k,2),f(t,2),f(t/k*100,0)+'%']}))}<p class="n">Một số tháng chỉ có số dự kiến hoặc số đến tuần báo cáo (xem nguồn trong dữ liệu).</p></div>`;
+function V0(){const ys=years().map(y=>[y,y]),gs=uniq(D.sales.map(r=>r[4])).filter(g=>!['Chiết khấu','Điều chỉnh','Khuyến mại'].includes(g)).sort(),rg=uniq(D.xnt.filter(r=>r[0]==S.y).map(r=>r[2])).sort();
+ return sel('y','Năm',ys)+sel('m','Từ tháng',MN.map((t,i)=>[i,i?t:'Đầu năm']))+sel('m2','Đến tháng',MN.map((t,i)=>[i,i?t:'Tháng mới nhất']))+sel('r','Khu vực',[['','Tất cả'],...rg],"S.n='';draw()")+sel('g','Nhóm sản phẩm',[['','Tất cả'],...gs])}
+const AB=(y,m)=>y*12+m-1,lastM=y=>Math.max(0,...D.tt.concat(D.xnt).filter(r=>r[0]==y).map(r=>r[1])),lastMk=(k,y)=>Math.max(0,...(k=='dt'?D.sales.filter(r=>r[1]):k=='nh'||k=='xu'?D.xnt:D.tt).filter(r=>r[0]==y).map(r=>r[1])),inS=s=>r=>s.has(AB(r[0],r[1]));
+function PER(k){const a=S.m||1,b=Math.max(a,S.m2||(k?lastMk(k,S.y):lastM(S.y))||12),n=b-a+1,mk=sh=>{const s=new Set();for(let m=a;m<=b;m++)s.add(AB(S.y,m)+sh);return s};return {a,b,n,c:mk(0),y:mk(-12),p:mk(-n)}}
+function agg(k,s){const F=inS(s);if(k=='cl'||k=='tp'||k=='go'){const i={cl:2,tp:3,go:4}[k],v=D.tt.filter(r=>F(r)&&r[i]!=null);return v.length?sum(v,i):null}
+ if(k=='dt'){const v=D.sales.filter(r=>r[1]&&F(r)&&(!S.g||r[4]==S.g));return v.length?sum(v,6)/B:null}
+ const v=D.xnt.filter(r=>F(r)&&(!S.r||r[2]==S.r));return v.length?sum(v,k=='nh'?5:6)/B:null}
+const dl=(a,b)=>a==null||!b?'<span class="n">–</span>':`<span class="${a>=b?'ok':'bad'}">${a>=b?'▲':'▼'} ${f(Math.abs(a/b-1)*100,1)}%</span>`;
+function card(l,k,u,d){const P=PER(k),c=agg(k,P.c);return `<div class="kc"><span>${l} · T${P.a}–T${P.b}</span><b>${c==null?'–':f(c,d)} <small>${u}</small></b><div class="dl">Cùng kỳ ${dl(c,agg(k,P.y))}<br>Kỳ trước ${dl(c,agg(k,P.p))}</div></div>`}
+function kpl(l,a,p,sub){const v=p?a/p:null;return `<div class="kc"><span>${l}</span><b class="${v==null?'':v>=1?'ok':v<.8?'bad':''}">${v==null?'–':f(v*100,0)+'%'}</b><div class="pb"><i style="width:${Math.min(100,(v||0)*100)}%"></i></div><div class="n">${p?sub:'chưa có kế hoạch'}</div></div>`}
+function kp1(k,l){const P=PER(),i={cl:2,tp:3,go:4}[k];let a=0,p=0,n=0;D.kh.forEach(r=>{if(P.c.has(AB(r[0],r[1]))&&r[i]!=null){const t=D.tt.find(t=>t[0]==r[0]&&t[1]==r[1]);if(t&&t[i]!=null){a+=t[i];p+=r[i];n++}}});return kpl(l,a,p,f(a,0)+' / '+f(p,0)+' · '+n+' tháng có kế hoạch')}
+function line(sr,w=640,h=230){const L=36,Bt=22,mx=Math.max(1,...sr.flatMap(s=>s.v.filter(x=>x!=null)))*1.1,X=i=>L+i*(w-L-10)/11,Y=v=>h-Bt-v/mx*(h-Bt-10);let o=`<svg viewBox="0 0 ${w} ${h}" width="100%" role="img">`;
+ for(let t=0;t<=4;t++){const v=mx*t/4,y=Y(v);o+=`<line x1="${L}" x2="${w-10}" y1="${y}" y2="${y}" stroke="var(--line)"/><text x="${L-4}" y="${y+4}" font-size="10" text-anchor="end" fill="var(--mut)">${f(v,v<10?1:0)}</text>`}
+ for(let i=0;i<12;i++)o+=`<text x="${X(i)}" y="${h-6}" font-size="10" text-anchor="middle" fill="var(--mut)">T${i+1}</text>`;
+ sr.forEach(s=>{const pt=s.v.map((v,i)=>v==null?null:[X(i),Y(v)]);o+=`<polyline fill="none" stroke="${s.c}" stroke-width="2" ${s.d?'stroke-dasharray="5 4"':''} points="${pt.filter(x=>x).map(x=>x.join(',')).join(' ')}"/>`;pt.forEach((x,i)=>{if(x)o+=`<circle cx="${x[0]}" cy="${x[1]}" r="3" fill="${s.c}"><title>${s.n} T${i+1}: ${f(s.v[i],1)}</title></circle>`})});return o+'</svg>'}
+const b2=(l,c,y,mx,u)=>`<div class="r"><span>${l}</span><div><div class="br"><i style="width:${mx?c/mx*100:0}%"></i></div><div class="br" style="margin-top:3px"><i style="width:${mx?y/mx*100:0}%;background:var(--wl)"></i></div></div><em>${f(c,u)} / ${f(y,u)}</em></div>`;
+const MT={cl:['Cuộn lớn (tấn)',1],tp:['Thành phẩm (tấn)',1],go:['Gỗ dán (m³)',1],dt:['Doanh số bán hàng (tỷ)',2],nh:['NPP nhập hàng (tỷ)',2],xu:['NPP xuất hàng (tỷ)',2]};
+function tab0(){const P=PER();let h=`<div class="fb"><div class="fl" style="margin:0">${V0()}</div></div><p class="n">Kỳ đang xem: T${P.a}–T${P.b}/${S.y}. "Cùng kỳ" là cùng các tháng năm ${S.y-1}; "kỳ trước" là ${P.n} tháng liền trước. Bộ lọc khu vực áp dụng cho số liệu NPP, nhóm sản phẩm áp dụng cho doanh số bán hàng.</p>`;
+ h+=`<div class="k">${card('Cuộn lớn tiêu thụ','cl','tấn',0)}${card('Thành phẩm tiêu thụ','tp','tấn',0)}${card('Gỗ dán tiêu thụ','go','m³',0)}${card('Doanh số bán hàng (chưa thuế)','dt','tỷ',2)}${card('NPP nhập hàng','nh','tỷ',2)}${card('NPP xuất hàng','xu','tỷ',2)}</div>`;
+ let pa=0,pp=0;D.plan.forEach(r=>{if(P.c.has(AB(r[0],r[1]))&&/^BC tổng hợp/.test(r[5])&&(!S.r||r[2]==S.r)){pa+=r[4];pp+=r[3]}});
+ h+=`<div class="k">${kp1('cl','Kế hoạch cuộn lớn')}${kp1('tp','Kế hoạch thành phẩm')}${kp1('go','Kế hoạch gỗ dán')}${kpl('Khoán doanh số nhập (T1–T6)',pa,pp,f(pa,1)+' / '+f(pp,1)+' tỷ')}</div>`;
+ const k=S.mt||'cl',sr=(y,c,d)=>({n:y,c,d,v:Array.from({length:12},(_,i)=>agg(k,new Set([AB(y,i+1)])))});
+ h+=`<div class="g2"><div class="bx"><div class="fl" style="margin:0 0 6px;justify-content:space-between"><h2>Xu hướng theo tháng</h2>${sel('mt','',Object.entries(MT).map(([a,b])=>[a,b[0]]))}</div>${line([sr(S.y-1,'var(--wl)',1),sr(S.y,'var(--ac)',0)])}<div class="lg"><span><i style="background:var(--ac)"></i>${S.y}</span><span><i style="background:var(--wl)"></i>${S.y-1}</span></div></div>`;
+ const rg=uniq(D.xnt.filter(r=>r[0]==S.y).map(r=>r[2])).sort(),v=rg.map(a=>[a,sum(D.xnt.filter(r=>inS(P.c)(r)&&r[2]==a),5)/B,sum(D.xnt.filter(r=>inS(P.y)(r)&&r[2]==a),5)/B]),mx=Math.max(...v.map(x=>Math.max(x[1],x[2])),.01);
+ h+=`<div class="bx"><h2>NPP nhập hàng theo khu vực (tỷ đồng)</h2>${v.map(x=>b2(x[0],x[1],x[2],mx,2)).join('')}<div class="lg"><span><i style="background:var(--ac)"></i>${S.y} (T${P.a}–T${P.b})</span><span><i style="background:var(--wl)"></i>Cùng kỳ ${S.y-1}</span></div></div></div>`;
+ const sl=D.sales.filter(r=>r[1]&&inS(P.c)(r)&&!['Chiết khấu','Điều chỉnh','Khuyến mại'].includes(r[4])&&(!S.g||r[4]==S.g)),sp=D.sales.filter(r=>r[1]&&inS(P.p)(r)&&!['Chiết khấu','Điều chỉnh','Khuyến mại'].includes(r[4])&&(!S.g||r[4]==S.g));
+ const gp=(a,i)=>{const o={};a.forEach(r=>o[r[i]]=(o[r[i]]||0)+r[6]);return o},cs=gp(sl,3),ps=gp(sp,3),tc=sum(sl,6),gc=Object.entries(gp(sl,4)).sort((a,b)=>b[1]-a[1]),gpv=gp(sp,4);
+ const top=Object.entries(cs).sort((a,b)=>b[1]-a[1]).slice(0,10),slow=Object.entries(ps).filter(([c,v])=>v>0&&(cs[c]||0)<v*.5).sort((a,b)=>b[1]-(cs[b[0]]||0)-(a[1]-(cs[a[0]]||0))).slice(0,10);
+ const grp=c=>(sl.concat(sp).find(r=>r[3]==c)||[])[4]||'';
+ h+=`<div class="g2"><div class="bx"><h2>Cơ cấu doanh số theo nhóm sản phẩm</h2>${gc.length?(sp.length?gc.map(([n,x])=>b2(n,x/B,(gpv[n]||0)/B,gc[0][1]/B,2)).join('')+'<div class="lg"><span><i style="background:var(--ac)"></i>Kỳ này</span><span><i style="background:var(--wl)"></i>Kỳ trước</span></div>':gc.map(([n,x])=>bar(n,x,gc[0][1],f(x/B,2)+' tỷ · '+f(x/tc*100,1)+'%')).join('')):'<p class="n">Chưa có dữ liệu bán hàng cho kỳ này.</p>'}</div>`;
+ const ng=D.xnt.filter(r=>inS(P.c)(r)&&(!S.r||r[2]==S.r)),nm_={};ng.forEach(r=>(nm_[r[3]]=nm_[r[3]]||[]).push(r));
+ const nr=Object.entries(nm_).map(([n,a])=>{const xu=sum(a,6)/uniq(a.map(r=>r[1])).length,lm=Math.max(...a.map(r=>r[1])),tc=sum(a.filter(r=>r[1]==lm),7);return [n,a[0][2],tc/1e6,xu?tc/xu:99]}).filter(r=>r[3]>=3&&r[2]>0).sort((a,b)=>b[2]-a[2]).slice(0,10);
+ h+=`<div class="bx"><h2>NPP tồn kho cao (từ 3 tháng bán trở lên)</h2>${nr.length?tbl(['NPP','Khu vực','Tồn cuối (triệu)','Tháng bán'],nr.map(r=>[r[0],r[1],f(r[2],0),r[3]>=99?'không xuất':f(r[3],1)])):'<p class="n">Không có NPP vượt ngưỡng trong kỳ này.</p>'}</div></div>`;
+ h+=`<div class="g2"><div class="bx"><h2>Top 10 mã hàng bán chạy (doanh số)</h2>${top.length?tbl(['Mã hàng','Nhóm','Doanh số (tỷ)','Tỷ trọng','So kỳ trước'],top.map(([c,x])=>[c,grp(c),f(x/B,2),f(x/tc*100,1)+'%',dl(x,ps[c])])):'<p class="n">Chưa có dữ liệu.</p>'}</div>`;
+ h+=`<div class="bx"><h2>Mã hàng chậm tiêu thụ (giảm trên 50% so với kỳ trước)</h2>${slow.length?tbl(['Mã hàng','Nhóm','Kỳ trước (tỷ)','Kỳ này (tỷ)','Thay đổi'],slow.map(([c,x])=>[c,grp(c),f(x/B,2),f((cs[c]||0)/B,2),dl(cs[c]||0,x)])):'<p class="n">Không có mã hàng nào giảm mạnh trong kỳ này (hoặc chưa có kỳ trước để so sánh).</p>'}</div></div>`;
  return h}
 function tab1(){const ys=D.xnt.filter(r=>r[0]==S.y),rg=uniq(ys.map(r=>r[2])).sort(),ns=uniq(ys.filter(r=>!S.r||r[2]==S.r).map(r=>r[3])).sort();
- let x=ys.filter(r=>(!S.m||r[1]==S.m)&&(!S.r||r[2]==S.r));
+ let x=ys.filter(r=>ir(r)&&(!S.r||r[2]==S.r));
  const gr={};x.forEach(r=>(gr[r[3]]=gr[r[3]]||[]).push(r));
  const rows=Object.entries(gr).filter(([n])=>!S.n||n==S.n).map(([n,a])=>{const nh=sum(a,5),xu=sum(a,6),mo=uniq(a.map(r=>r[1])).length,tc=lastClose(a);return [n,a[0][2],f(nh/1e6,0),f(xu/1e6,0),f(tc/1e6,0),xu?f(tc/(xu/mo),1):'–']}).sort((a,b)=>+b[2].replace(/\./g,'')-+a[2].replace(/\./g,''));
- let h=`<div class="fl">${V0()}${sel('r','Khu vực',[['','Tất cả'],...rg],"S.n='';draw()")}${sel('n','Nhà phân phối',[['','Tất cả'],...ns])}</div>`;
+ let h=`<div class="fl">${V0()}${sel('n','Nhà phân phối',[['','Tất cả'],...ns])}</div>`;
  h+=`<div class="bx"><h2>Xuất nhập tồn theo nhà phân phối (triệu đồng)</h2>${tbl(['NPP','Khu vực','Nhập','Xuất','Tồn cuối','Tồn / xuất (tháng)'],rows)}</div>`;
  if(S.n){const a=ys.filter(r=>r[3]==S.n);h+=`<div class="bx"><h2>${S.n}: theo tháng ${S.y} (triệu đồng)</h2>${tbl(['Tháng','Tồn đầu','Nhập','Xuất','Tồn cuối'],a.sort((p,q)=>p[1]-q[1]).map(r=>['T'+r[1],f(r[4]/1e6,0),f(r[5]/1e6,0),f(r[6]/1e6,0),f(r[7]/1e6,0)]))}</div>`}
  return h}
 function tab2(){const gs=uniq(D.sales.map(r=>r[4])).sort();let s=D.sales.filter(r=>inR(r)&&(!S.g||r[4]==S.g));
- let h=`<div class="fl">${V0()}${sel('g','Nhóm sản phẩm',[['','Tất cả'],...gs])}</div>`;
+ let h=`<div class="fl">${V0()}</div>`;
  if(!s.length)return h+'<p class="n">Chưa có dữ liệu bán hàng cho kỳ này (năm 2025 chỉ có tổng cả năm: chọn Tất cả tháng nếu muốn xem).</p>';
  const net=sum(s,6),pr=s.filter(r=>r[4]!='Chiết khấu'&&r[4]!='Điều chỉnh'),tot=sum(pr,6);
  h+=`<div class="k"><div class="kc"><b>${f(net/B,2)} tỷ</b><span>Doanh số chưa thuế (sau CK)</span></div><div class="kc"><b>${f(tot/B,2)} tỷ</b><span>Trước chiết khấu</span></div><div class="kc"><b>${tot?f((tot-net)/tot*100,1)+'%':'–'}</b><span>Chiết khấu / doanh số</span></div><div class="kc"><b>${uniq(s.map(r=>r[2])).length}</b><span>Khách hàng phát sinh</span></div></div>`;
@@ -81,11 +106,11 @@ function tab5(){const cs=D.comp,ar=uniq(cs.map(c=>c[2])).sort(),it=uniq(cs.filte
  const rows=cp.map(n=>{const v=pe.map(p=>{const c=find(n,p);return c?(c[k[0]]!=null?c[k[0]]:'–'):'–'});const nu=pe.map(p=>{const c=find(n,p);return c?c[k[1]]:null}).filter(x=>x!=null);return [n==='Sông Đuống'?'<b>Sông Đuống (ta)</b>':n,...v,nu.length>1?pc(nu[nu.length-1],nu[0]):'–']});
  return `<div class="fl">${sel('area','Khu vực',ar,"S.item='';draw()")}${sel('item','Sản phẩm',it)}${sel('bs','Loại giá',[[0,'Đến cửa hàng'],[1,'Cho người tiêu dùng']])}</div><div class="bx"><h2>${S.item} – ${S.area} (nghìn đồng)</h2>${tbl(['Đối thủ',...pe.map(p=>'T'+(p%100)+'/'+Math.floor(p/100)),'Đổi (đầu → cuối)'],rows)}<p class="n">Ô có khoảng giá giữ nguyên ghi chú gốc; % thay đổi tính theo trung điểm. Thêm kỳ mới bằng cách tải file so sánh giá ở tab Cập nhật dữ liệu.</p></div>`}
 function tab6(){const ys=[[0,'Tự nhận từ tên file'],...Array.from({length:6},(_,i)=>2024+i).map(y=>[y,y])];
- return `<div class="bx"><h2>Tải file báo cáo để cập nhật</h2><p class="n">Hệ thống tự nhận dạng loại file: (1) báo cáo bán hàng theo đối tượng (BC_BANHANG…), (2) báo cáo xuất nhập tồn NPP nhiều tháng (Báo_cáo_XNT_các_kv…), (3) báo cáo sản xuất và tiêu thụ tháng (BC_SX_TT…): lấy tiêu thụ thực hiện của cuộn lớn, thành phẩm, gỗ dán và ghi vào bảng sản lượng tháng, thay cho file so sánh nhiều năm; (4) bảng so sánh giá đối thủ; (5) file so sánh tiêu thụ nhiều năm (so_sanh_tieu_thu…), chỉ dùng khi cần nạp lại lịch sử. Dữ liệu cùng kỳ được ghi đè, kỳ mới được thêm vào. Chưa đọc được: file Word, ảnh, báo cáo tuần/ngày.</p><div class="fl">${sel('uy','Năm (nếu tên file không có)',ys,'')}${sel('um','Tháng (nếu tên file không có)',[[0,'Tự nhận'],...Array.from({length:12},(_,i)=>[i+1,'Tháng '+(i+1)])],'')}</div><div class="fl"><input id="fi" type="file" multiple accept=".xls,.xlsx"><button class="b" onclick="go()">Cập nhật</button></div><pre id="lg">${LOG.join('\n')||'Chưa có thao tác.'}</pre></div><div class="bx"><h2>Lưu dữ liệu</h2><p class="n">Dữ liệu tải lên được lưu trong trình duyệt này. Để dùng chung nhiều máy: bấm "Tải data.json", thay file data/data.json trong repo GitHub rồi bấm "Xóa dữ liệu cục bộ".</p><div class="fl"><button class="b" onclick="dl()">Tải data.json</button><button class="b g" onclick="localStorage.removeItem('wsp');location.reload()">Xóa dữ liệu cục bộ</button><label>Nạp data.json thủ công<input type="file" accept=".json" onchange="ld(this.files[0])"></label></div></div>`}
+ return `<div class="bx"><h2>Tải file báo cáo để cập nhật</h2><p class="n">Hệ thống tự nhận dạng loại file: (1) báo cáo bán hàng theo đối tượng (BC_BANHANG…), (2) báo cáo xuất nhập tồn NPP nhiều tháng (Báo_cáo_XNT_các_kv…), (3) báo cáo sản xuất và tiêu thụ tháng (BC_SX_TT…): lấy tiêu thụ thực hiện của cuộn lớn, thành phẩm, gỗ dán và ghi vào bảng sản lượng tháng, thay cho file so sánh nhiều năm; (4) bảng so sánh giá đối thủ; (5) file so sánh tiêu thụ nhiều năm (so_sanh_tieu_thu…), chỉ dùng khi cần nạp lại lịch sử. Dữ liệu cùng kỳ được ghi đè, kỳ mới được thêm vào. Chưa đọc được: file Word, ảnh, báo cáo tuần/ngày.</p><div class="fl">${sel('uy','Năm (nếu tên file không có)',ys,'')}${sel('um','Tháng (nếu tên file không có)',[[0,'Tự nhận'],...Array.from({length:12},(_,i)=>[i+1,'Tháng '+(i+1)])],'')}</div><div class="fl"><input id="fi" type="file" multiple accept=".xls,.xlsx"><button class="b" onclick="go()">Cập nhật</button></div><pre id="lg">${LOG.join('\n')||'Chưa có thao tác.'}</pre></div><div class="bx"><h2>Lưu dữ liệu</h2><p class="n">Dữ liệu tải lên được lưu trong trình duyệt này. Để dùng chung nhiều máy: bấm "Tải data.json", thay file data/data.json trong repo GitHub rồi bấm "Xóa dữ liệu cục bộ".</p><div class="fl"><button class="b" onclick="dld()">Tải data.json</button><button class="b g" onclick="localStorage.removeItem('wsp');location.reload()">Xóa dữ liệu cục bộ</button><label>Nạp data.json thủ công<input type="file" accept=".json" onchange="ld(this.files[0])"></label></div></div>`}
 const FN=[tab0,tab1,tab2,tab3,tab4,tab5,tab6];
 function draw(){[...$('#nav').children].forEach((b,i)=>b.classList.toggle('on',i==T));const sy=scrollY;$('#app').innerHTML=FN[T]();scrollTo(0,sy)}
 /* --- ghi dữ liệu --- */
-const KEY={sales:r=>r[0]+'|'+r[1],xnt:r=>r[0]+'|'+r[1],tt:r=>r[0]+'|'+r[1],comp:r=>r[0]+'|'+r[1]+'|'+r[2],plan:r=>r[0]+'|'+r[1]+'|'+r[2]};
+const KEY={sales:r=>r[0]+'|'+r[1],xnt:r=>r[0]+'|'+r[1],tt:r=>r[0]+'|'+r[1],comp:r=>r[0]+'|'+r[1]+'|'+r[2],plan:r=>r[0]+'|'+r[1]+'|'+r[2],kh:r=>r[0]+'|'+r[1]};
 function put(k,rows){if(!rows.length)return;const ks=new Set(rows.map(KEY[k]));D[k]=D[k].filter(r=>!ks.has(KEY[k](r))).concat(rows)}
 function save(p){try{const a=JSON.parse(localStorage.getItem('wsp')||'[]');a.push(p);localStorage.setItem('wsp',JSON.stringify(a))}catch(e){LOG.push('Không lưu được vào trình duyệt (dữ liệu quá lớn): hãy tải data.json.')}}
 const nm=v=>typeof v=='number'?v:null,txt=v=>v==null?'':String(v).trim();
@@ -106,18 +131,18 @@ function pSX(wb,A){DIF=[];const a=A(wb.SheetNames[0]),hd=a.slice(0,12),ti=txt(hd
  if(!mm)throw 'Không đọc được tháng/năm ở tiêu đề báo cáo';const y=+mm[2],m=+mm[1];let c0=-1,hr=-1;
  hd.forEach((r,i)=>r.forEach((c,j)=>{if(c0<0&&/^\s*TIÊU THỤ\s*$/i.test(txt(c))){c0=j;hr=i}}));if(c0<0)throw 'Không thấy cột TIÊU THỤ';
  let cv=c0;for(let j=c0;j<c0+4;j++)if(/Thực hiện/i.test(txt(a[hr+1]&&a[hr+1][j]))){cv=j;break}
- const L=cv+2,rows=a.slice(hr+1,hr+30),e=D.tt.find(t=>t[0]==y&&t[1]==m),o=(e||[y,m,null,null,null]).slice();
+ const kr=[y,m,null,null,null],L=cv+2,rows=a.slice(hr+1,hr+30),e=D.tt.find(t=>t[0]==y&&t[1]==m),o=(e||[y,m,null,null,null]).slice();
  [[/cuộn lớn/i,/trả lại/i,2,'cuộn lớn'],[/thành phẩm/i,/trả lại/i,3,'thành phẩm'],[/^gỗ dán/i,null,4,'gỗ dán']].forEach(([re,nx,i,nmx])=>{
   const r=rows.find(r=>re.test(txt(r[1]))&&!(nx&&nx.test(txt(r[1]))));if(!r||typeof r[cv]!='number')throw 'Thiếu dòng '+nmx;const v=Math.round(r[cv]*100)/100;
-  if(e&&e[i]!=null&&Math.abs(e[i]-v)>.5)DIF.push(`${m}/${y} ${nmx}: ${f(e[i])} → ${f(v)}`);o[i]=v;
+  if(e&&e[i]!=null&&Math.abs(e[i]-v)>.5)DIF.push(`${m}/${y} ${nmx}: ${f(e[i])} → ${f(v)}`);o[i]=v;if(typeof r[cv+1]=='number')kr[i]=r[cv+1];
   const prev=D.tt.filter(t=>t[0]==y&&t[1]<m);if(typeof r[L]=='number'&&prev.length==m-1&&Math.abs(sum(prev,i)+v-r[L])>2)DIF.push(`lũy kế ${nmx}: file ghi ${f(r[L])}, cộng các tháng trước ${f(sum(prev,i)+v)}`)});
- return ['tt',[o]]}
+ put('kh',[kr]);save({k:'kh',rows:[kr]});return ['tt',[o]]}
 async function ing(file){const wb=XLSX.read(await file.arrayBuffer(),{type:'array'}),A=n=>XLSX.utils.sheet_to_json(wb.Sheets[n],{header:1,defval:null}),sn=wb.SheetNames;
  let res;if(A(sn[0]).slice(0,12).some(r=>r.some(c=>/SẢN XUẤT VÀ TIÊU THỤ/i.test(txt(c)))))res=pSX(wb,A);else if(sn.includes('CUỘN LỚN')&&sn.includes('thành phẩm'))res=pTT(wb,A);else if(sn.some(n=>/^\s*T0?\d+-\d{4}/.test(n)))res=pX(wb,A);
  else{const a=A(sn[0]).slice(0,15);if(a.some(r=>r[0]==='Mã số'))res=pB(wb,A,file.name);else if(a.slice(0,4).some(r=>r.some(c=>/SO SÁNH ĐỐI THỦ/i.test(txt(c)))))res=pC(wb,A,file.name);else throw 'Chưa nhận dạng được loại file này'}
  put(res[0],res[1]);save({k:res[0],rows:res[1]});const ks=uniq(res[1].map(KEY[res[0]]||(r=>r[0]+'|'+r[1])));return `${file.name}: ${res[1].length} dòng (${res[0]}), kỳ ${ks.slice(0,6).join(', ')}${ks.length>6?'…':''}`+(res[0]=='tt'&&DIF.length?`\n   ⚠ ${DIF.length} điểm cần kiểm tra (số mới đã được ghi): ${DIF.slice(0,6).join('; ')}`:'')}
 async function go(){const fs=[...$('#fi').files];if(!fs.length)return;for(const f of fs){try{LOG.push('✔ '+await ing(f))}catch(e){LOG.push('✘ '+f.name+': '+e)}}init();draw()}
-function dl(){const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([JSON.stringify(D)],{type:'application/json'}));a.download='data.json';a.click()}
+function dld(){const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([JSON.stringify(D)],{type:'application/json'}));a.download='data.json';a.click()}
 async function ld(file){D=JSON.parse(await file.text());init();draw()}
 (async()=>{try{D=await(await fetch('data/data.json')).json()}catch(e){LOG.push('Không tải được data/data.json (mở file trực tiếp?). Dùng nút Nạp data.json hoặc chạy qua GitHub Pages.')}
  try{JSON.parse(localStorage.getItem('wsp')||'[]').forEach(p=>put(p.k,p.rows))}catch(e){}init();draw()})();

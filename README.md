@@ -2,6 +2,13 @@
 
 Web app tĩnh theo dõi tiêu thụ Watersilk, giấy cuộn lớn và gỗ dán. Không cần máy chủ: mọi xử lý chạy trên trình duyệt.
 
+## Tính năng chính
+- Thanh lọc dùng chung: năm, khoảng tháng (từ – đến), khu vực, nhóm sản phẩm.
+- Thẻ KPI: tiêu thụ cuộn lớn/thành phẩm/gỗ dán, doanh số bán hàng, NPP nhập/xuất, kèm % so với cùng kỳ và kỳ trước; % hoàn thành kế hoạch.
+- Biểu đồ đường xu hướng theo tháng (so với năm trước), biểu đồ cột theo khu vực và nhóm sản phẩm.
+- Top mã hàng bán chạy, mã hàng chậm tiêu thụ, NPP tồn kho cao.
+- Chưa có: dữ liệu theo ngày/tuần và theo kênh bán hàng (báo cáo hiện có không chứa các chiều này).
+
 ## Cấu trúc
 - `index.html` – ứng dụng (7 tab: Tổng quan, Nhà phân phối, Bán hàng, Sản lượng, Bảng giá, Giá đối thủ, Cập nhật dữ liệu)
 - `data/data.json` – toàn bộ dữ liệu đã gộp (bán hàng T1–T9/2026 và cả năm 2025, xuất nhập tồn NPP 4/2021–9/2026, sản lượng 2017–9/2026, khoán khu vực, giá đối thủ T2–T10/2026, bảng giá công ty)
