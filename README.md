@@ -15,7 +15,8 @@ Mở trực tiếp `index.html` từ ổ đĩa sẽ không tải được `data.
 
 ## Cập nhật số liệu hàng tháng
 1. Mở tab **Cập nhật dữ liệu**, chọn file (có thể chọn nhiều file) rồi bấm **Cập nhật**.
-2. App tự nhận dạng 4 loại file Excel (.xls/.xlsx): báo cáo bán hàng theo đối tượng (`BC_BANHANG…`), xuất nhập tồn NPP nhiều tháng (`Báo_cáo_XNT_các_kv…`), so sánh tiêu thụ nhiều năm (`so_sanh_tieu_thu…`), bảng so sánh giá đối thủ. Kỳ lấy từ tên file hoặc từ ô chọn năm/tháng; dữ liệu cùng kỳ bị ghi đè.
+2. App tự nhận dạng 5 loại file Excel (.xls/.xlsx): báo cáo bán hàng theo đối tượng (`BC_BANHANG…`), xuất nhập tồn NPP nhiều tháng (`Báo_cáo_XNT_các_kv…`), **báo cáo sản xuất và tiêu thụ tháng (`BC_SX_TT_…`)**, bảng so sánh giá đối thủ, và (chỉ khi cần nạp lại lịch sử) so sánh tiêu thụ nhiều năm (`so_sanh_tieu_thu…`).
+   File `BC_SX_TT_…` lấy tiêu thụ thực hiện của cuộn lớn, thành phẩm, gỗ dán trong tháng ghi vào bảng sản lượng, đồng thời đối chiếu với cột lũy kế năm trong file và cảnh báo nếu lệch. Kỳ lấy từ tên file hoặc từ ô chọn năm/tháng; dữ liệu cùng kỳ bị ghi đè.
 3. Dữ liệu cập nhật được lưu trong trình duyệt đang dùng. Để mọi người cùng thấy: bấm **Tải data.json**, thay `data/data.json` trong repo, rồi bấm **Xóa dữ liệu cục bộ**.
 
 ## Chưa hỗ trợ
