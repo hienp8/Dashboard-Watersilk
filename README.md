@@ -1,34 +1,35 @@
 # Dashboard Watersilk
 
-Web app tĩnh theo dõi tiêu thụ Watersilk, giấy cuộn lớn và gỗ dán. Không cần máy chủ: mọi xử lý chạy trên trình duyệt.
+Web app tĩnh theo dõi sản xuất, tiêu thụ, tồn kho, doanh thu và bán hàng thành phẩm của Watersilk, giấy cuộn lớn và gỗ dán. Chạy hoàn toàn trên trình duyệt.
 
-## Tính năng chính
-- Thanh lọc dùng chung: năm, khoảng tháng (từ – đến), khu vực, nhóm sản phẩm.
-- Thẻ KPI: tiêu thụ cuộn lớn/thành phẩm/gỗ dán, doanh số bán hàng, NPP nhập/xuất, kèm % so với cùng kỳ và kỳ trước; % hoàn thành kế hoạch.
-- Biểu đồ đường xu hướng theo tháng (so với năm trước), biểu đồ cột theo khu vực và nhóm sản phẩm.
-- Top mã hàng bán chạy, mã hàng chậm tiêu thụ, NPP tồn kho cao.
-- Chưa có: dữ liệu theo ngày/tuần và theo kênh bán hàng (báo cáo hiện có không chứa các chiều này).
-
-## Cấu trúc
-- `index.html` – ứng dụng (7 tab: Tổng quan, Nhà phân phối, Bán hàng, Sản lượng, Bảng giá, Giá đối thủ, Cập nhật dữ liệu)
-- `data/data.json` – toàn bộ dữ liệu đã gộp (bán hàng T1–T9/2026 và cả năm 2025, xuất nhập tồn NPP 4/2021–9/2026, sản lượng 2017–9/2026, khoán khu vực, giá đối thủ T2–T10/2026, bảng giá công ty)
+## Các tab
+- **Tổng quan:** doanh thu so với kế hoạch; từng sản phẩm (cuộn lớn, gỗ dán, thành phẩm) với tiêu thụ, % kế hoạch tháng, % kế hoạch năm, sản xuất, tồn cuối. Bán hàng thành phẩm có các mục con: doanh số bán hàng, NPP nhập – xuất, khoán doanh số.
+- **Sản xuất & tồn kho:** bảng theo dõi tồn đầu, sản xuất, tiêu thụ, tồn cuối theo tháng và theo từng sản phẩm; kế hoạch tháng và năm.
+- **Nhà phân phối:** biểu đồ xu hướng nhập/xuất/tồn qua các năm, bảng xuất nhập tồn có STT và dòng tổng cộng, NPP tồn kho cao.
+- **Bán hàng thành phẩm:** doanh số theo nhóm sản phẩm, top mã hàng, mã hàng chậm tiêu thụ, khách hàng lớn.
+- **Sản lượng:** so sánh nhiều năm (2017 đến nay) bằng biểu đồ đường, cột và bảng.
+- **Bảng giá** (thành phẩm, cuộn lớn, gỗ dán) và **Giá đối thủ**.
+- **Cập nhật dữ liệu:** tải file báo cáo lên để cập nhật.
 
 ## Chạy trên GitHub Pages
-1. Tải toàn bộ nội dung thư mục này lên repo (Add file → Upload files).
-2. Settings → Pages → Branch: `main`, thư mục `/ (root)` → Save.
-3. Mở địa chỉ `https://<tên-tài-khoản>.github.io/Dashboard-Watersilk/`.
+1. Tải toàn bộ nội dung thư mục này lên repo (kể cả thư mục ẩn `.github`).
+2. Settings → Pages → Branch `main`, thư mục root → Save.
+3. Mở `https://<tài-khoản>.github.io/Dashboard-Watersilk/`.
 
-Mở trực tiếp `index.html` từ ổ đĩa sẽ không tải được `data.json` (trình duyệt chặn); khi đó dùng nút "Nạp data.json" ở tab Cập nhật dữ liệu, hoặc chạy `python3 -m http.server`.
+Lưu ý riêng tư: nếu repo ở chế độ công khai thì `data/data.json` (số liệu kinh doanh) cũng công khai. Dùng repo riêng tư và gói GitHub hỗ trợ Pages riêng tư, hoặc không đưa số liệu nhạy cảm lên.
 
-## Cập nhật số liệu hàng tháng
-1. Mở tab **Cập nhật dữ liệu**, chọn file (có thể chọn nhiều file) rồi bấm **Cập nhật**.
-2. App tự nhận dạng 5 loại file Excel (.xls/.xlsx): báo cáo bán hàng theo đối tượng (`BC_BANHANG…`), xuất nhập tồn NPP nhiều tháng (`Báo_cáo_XNT_các_kv…`), **báo cáo sản xuất và tiêu thụ tháng (`BC_SX_TT_…`)**, bảng so sánh giá đối thủ, và (chỉ khi cần nạp lại lịch sử) so sánh tiêu thụ nhiều năm (`so_sanh_tieu_thu…`).
-   File `BC_SX_TT_…` lấy tiêu thụ thực hiện của cuộn lớn, thành phẩm, gỗ dán trong tháng ghi vào bảng sản lượng, đồng thời đối chiếu với cột lũy kế năm trong file và cảnh báo nếu lệch. Kỳ lấy từ tên file hoặc từ ô chọn năm/tháng; dữ liệu cùng kỳ bị ghi đè.
-3. Dữ liệu cập nhật được lưu trong trình duyệt đang dùng. Để mọi người cùng thấy: bấm **Tải data.json**, thay `data/data.json` trong repo, rồi bấm **Xóa dữ liệu cục bộ**.
+## Cập nhật thủ công
+Tab **Cập nhật dữ liệu**: chọn một hoặc nhiều file .xls/.xlsx rồi bấm Cập nhật. Nhận dạng tự động 6 loại: báo cáo sản xuất và tiêu thụ tháng (`BC_SX_TT…`), báo cáo tiêu thụ và XNT hàng tuần (`BC TIÊU THỤ & XNT…`), báo cáo bán hàng theo đối tượng (`BC_BANHANG…`), XNT NPP nhiều tháng (`Báo_cáo_XNT_các_kv…`), so sánh giá đối thủ, so sánh tiêu thụ nhiều năm. Dữ liệu lưu trong trình duyệt; để dùng chung, bấm "Tải data.json", thay file `data/data.json` trong repo rồi "Xóa dữ liệu cục bộ".
 
-## Chưa hỗ trợ
-Đọc file Word, ảnh, báo cáo tuần/ngày; cập nhật bảng giá công ty (sửa trong `data/data.json`, mục `prices`); bảng giá siêu thị, Viettel, Shopee/Tiki.
+## Cập nhật tự động từ Gmail hoặc Google Drive
+Quy trình: email hoặc thư mục Drive → (Google Apps Script) → thư mục `inbox/` trong repo → (GitHub Actions chạy `scripts/ingest.py`) → `data/data.json` cập nhật → trang web tự có số mới.
+1. File `.github/workflows/ingest.yml` đã có sẵn trong repo; không cần cấu hình thêm.
+2. Dán `scripts/gmail_drive_to_github.gs` vào script.google.com, làm theo hướng dẫn ở đầu file (tạo GitHub token chỉ cấp quyền cho repo này, đặt `GITHUB_TOKEN`, chạy `setup()` một lần). Script quét Gmail theo `CFG.QUERY` và/hoặc thư mục Drive mỗi 15 phút.
+3. Cũng có thể bỏ file vào thư mục `inbox/` trên GitHub bằng tay; Actions sẽ xử lý và chuyển file sang `inbox/processed/`.
+`scripts/ingest.py` cần `pip install openpyxl xlrd` (đã có trong workflow).
 
 ## Lưu ý dữ liệu
-- T5/2026 trong file `so_sanh_tieu_thu…` ghi hoán đổi cuộn lớn và thành phẩm; `data.json` đã sửa. Nếu tải lại file gốc chưa sửa, app sẽ cảnh báo các ô bị đổi.
-- Bảng giá cuộn lớn lấy từ quyết định 30/6/2023 (từ ảnh), cần kiểm tra còn hiệu lực.
+- T5/2026 trong file `so_sanh_tieu_thu…` ghi hoán đổi cuộn lớn và thành phẩm; `data.json` đã sửa và app cảnh báo nếu nạp lại file gốc chưa sửa.
+- Số tháng 10 của NPP và khoán lấy từ báo cáo tuần (đến ngày 24/10) cho tới khi có báo cáo đầy đủ tháng.
+- Bảng giá cuộn lớn lấy từ quyết định 30/6/2023, cần kiểm tra còn hiệu lực.
+- Chưa đọc được file Word, ảnh; chưa có số liệu theo ngày hoặc kênh bán hàng.
