@@ -1,0 +1,29 @@
+name: Cập nhật dữ liệu từ thư mục inbox
+on:
+  push:
+    paths:
+      - 'inbox/*.xls'
+      - 'inbox/*.xlsx'
+  workflow_dispatch:
+permissions:
+  contents: write
+concurrency:
+  group: ingest
+  cancel-in-progress: false
+jobs:
+  ingest:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: pip install openpyxl xlrd
+      - name: Đọc báo cáo trong inbox và cập nhật data/data.json
+        run: python scripts/ingest.py inbox data/data.json
+      - name: Lưu thay đổi
+        run: |
+          git config user.name "dashboard-bot"
+          git config user.email "dashboard-bot@users.noreply.github.com"
+          git add -A
+          git diff --cached --quiet || (git commit -m "Cập nhật dữ liệu tự động từ báo cáo mới" && git push)
