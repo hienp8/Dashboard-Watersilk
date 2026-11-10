@@ -125,16 +125,34 @@ def detect(S,name,y0=0,m0=0,D=None):
     raise ValueError('chưa nhận dạng được loại file')
 def put(D,k,rows):
     ks={KEY[k](r) for r in rows}; D[k]=[r for r in D.get(k,[]) if KEY[k](r) not in ks]+rows
+KN={'sales':'Bán hàng','xnt':'Xuất nhập tồn NPP','tt':'Sản lượng tháng','sx':'Sản xuất & tiêu thụ','dt':'Doanh thu','plan':'Khoán khu vực','comp':'Giá đối thủ','kh':'Kế hoạch'}
 def main():
+    import datetime
     inbox=sys.argv[1] if len(sys.argv)>1 else 'inbox'; dj=sys.argv[2] if len(sys.argv)>2 else 'data/data.json'
-    D=json.load(open(dj,encoding='utf-8')); n=0
+    D=json.load(open(dj,encoding='utf-8')); n=0; D.setdefault('log',[])
     for f in sorted(glob.glob(os.path.join(inbox,'*.xls*'))):
+        if f.endswith('.meta.json'): continue
+        name=os.path.basename(f); meta={}
+        mp=f+'.meta.json'
+        if os.path.exists(mp):
+            try: meta=json.load(open(mp,encoding='utf-8'))
+            except Exception: meta={}
+        now=datetime.datetime.now(datetime.timezone.utc).strftime('%Y-%m-%dT%H:%M:%SZ')
+        src=meta.get('source') or 'GitHub'; by=meta.get('from') or os.environ.get('GITHUB_ACTOR','') or '?'
         try:
-            res=detect(read(f),os.path.basename(f),0,0,D)
+            res=detect(read(f),name,0,0,D)
             for k,rows in res.items(): put(D,k,rows)
-            print('OK ',os.path.basename(f),{k:len(v) for k,v in res.items()}); n+=1
-            os.makedirs(os.path.join(inbox,'processed'),exist_ok=True); shutil.move(f,os.path.join(inbox,'processed',os.path.basename(f)))
-        except Exception as e: print('LỖI',os.path.basename(f),e)
+            kind=', '.join(dict.fromkeys(KN.get(k,k) for k in res)); summ='; '.join(f'{len(v)} dòng {KN.get(k,k)}' for k,v in res.items())
+            D['log'].append([now,name,src,by,kind,summ]); n+=1
+            print('OK ',name,{k:len(v) for k,v in res.items()})
+            os.makedirs(os.path.join(inbox,'processed'),exist_ok=True)
+            shutil.move(f,os.path.join(inbox,'processed',name))
+            if os.path.exists(mp): shutil.move(mp,os.path.join(inbox,'processed',name+'.meta.json'))
+        except Exception as e:
+            print('LỖI',name,e); D['log'].append([now,name,src,by,'Lỗi','Không đọc được: '+str(e)]); n+=1
+            os.makedirs(os.path.join(inbox,'failed'),exist_ok=True); shutil.move(f,os.path.join(inbox,'failed',name))
+            if os.path.exists(mp): shutil.move(mp,os.path.join(inbox,'failed',name+'.meta.json'))
+    D['log']=D['log'][-500:]
     if n: json.dump(D,open(dj,'w',encoding='utf-8'),ensure_ascii=False,separators=(',',':'))
-    print('Đã cập nhật',n,'file')
+    print('Đã xử lý',n,'file')
 if __name__=='__main__': main()

@@ -1,22 +1,26 @@
 /**
  * Google Apps Script: tự động đưa file báo cáo (.xls/.xlsx) từ Gmail hoặc thư mục Google Drive
- * vào thư mục inbox/ của repo GitHub. GitHub Actions sẽ đọc file và cập nhật data/data.json.
+ * vào thư mục inbox/ của repo GitHub. GitHub Actions sẽ đọc file, cập nhật data/data.json và ghi lịch sử.
  *
- * Cài đặt (làm một lần):
+ * Phân quyền: chỉ email gửi từ địa chỉ trong ALLOWED_SENDERS mới được nạp. Với Drive, chỉ người được
+ * chia sẻ quyền chỉnh sửa thư mục mới bỏ file vào được.
+ *
+ * Cài đặt (một lần):
  * 1. Vào script.google.com, tạo dự án mới, dán toàn bộ mã này.
  * 2. Tạo GitHub token (Settings > Developer settings > Fine-grained tokens): chỉ chọn repo Dashboard-Watersilk,
  *    quyền Contents = Read and write. Trong Apps Script: Project Settings > Script properties > thêm GITHUB_TOKEN.
- * 3. Sửa CFG bên dưới (OWNER, REPO, QUERY hoặc DRIVE_FOLDER_ID).
- * 4. Chạy hàm setup() một lần, cấp quyền khi được hỏi. Sau đó script tự chạy mỗi 15 phút.
+ * 3. Sửa CFG: OWNER, REPO, ALLOWED_SENDERS (bắt buộc), DRIVE_FOLDER_ID (nếu dùng Drive).
+ * 4. Chạy hàm setup() một lần và cấp quyền. Sau đó script tự chạy mỗi 15 phút.
  */
 const CFG = {
   OWNER: 'hienp8',
   REPO: 'Dashboard-Watersilk',
   BRANCH: 'main',
-  LABEL: 'dashboard-da-xu-ly',
-  // Chỉ lấy thư có file Excel đính kèm; thêm "from:địa_chỉ_người_gửi" hoặc "subject:BC" để lọc chặt hơn
-  QUERY: 'has:attachment (filename:xls OR filename:xlsx) newer_than:14d -label:dashboard-da-xu-ly',
-  DRIVE_FOLDER_ID: '' // để trống nếu không dùng Google Drive
+  LABEL_OK: 'dashboard-da-xu-ly',
+  LABEL_SKIP: 'dashboard-bo-qua',
+  ALLOWED_SENDERS: [],   // ví dụ: ['ten.nguoi.gui@congty.com']; để trống sẽ KHÔNG nhận email nào
+  QUERY: 'has:attachment (filename:xls OR filename:xlsx) newer_than:14d -label:dashboard-da-xu-ly -label:dashboard-bo-qua',
+  DRIVE_FOLDER_ID: ''    // để trống nếu không dùng Google Drive
 };
 
 function putFile_(name, bytes) {
@@ -34,18 +38,36 @@ function putFile_(name, bytes) {
   if (res.getResponseCode() >= 300) throw new Error(name + ': ' + res.getContentText());
 }
 
+// Đẩy file kèm ghi chú nguồn (tải ghi chú trước để lịch sử cập nhật có đủ thông tin)
+function send_(name, bytes, meta) {
+  putFile_(name + '.meta.json', Utilities.newBlob(JSON.stringify(meta)).getBytes());
+  putFile_(name, bytes);
+}
+
+function emailOf_(from) {
+  const m = String(from).match(/<([^>]+)>/);
+  return (m ? m[1] : String(from)).trim().toLowerCase();
+}
+
 function fromGmail() {
-  const label = GmailApp.getUserLabelByName(CFG.LABEL) || GmailApp.createLabel(CFG.LABEL);
+  const ok = GmailApp.getUserLabelByName(CFG.LABEL_OK) || GmailApp.createLabel(CFG.LABEL_OK);
+  const skip = GmailApp.getUserLabelByName(CFG.LABEL_SKIP) || GmailApp.createLabel(CFG.LABEL_SKIP);
+  const allowed = CFG.ALLOWED_SENDERS.map(function (s) { return s.toLowerCase(); });
   GmailApp.search(CFG.QUERY, 0, 20).forEach(function (thread) {
-    let ok = true;
+    let good = true, used = false;
     thread.getMessages().forEach(function (m) {
+      const sender = emailOf_(m.getFrom());
+      if (allowed.indexOf(sender) < 0) return;          // người gửi chưa được duyệt: bỏ qua
       m.getAttachments().forEach(function (a) {
-        if (/\.xlsx?$/i.test(a.getName())) {
-          try { putFile_(a.getName(), a.getBytes()); } catch (e) { ok = false; console.error(e); }
-        }
+        if (!/\.xlsx?$/i.test(a.getName())) return;
+        used = true;
+        try {
+          send_(a.getName(), a.getBytes(), { source: 'Gmail', from: sender, subject: m.getSubject(), date: String(m.getDate()) });
+        } catch (e) { good = false; console.error(e); }
       });
     });
-    if (ok) thread.addLabel(label);   // chỉ gắn nhãn khi tất cả file đã gửi thành công
+    if (!good) return;                                   // lỗi: thử lại ở lần chạy sau
+    thread.addLabel(used ? ok : skip);
   });
 }
 
@@ -58,7 +80,11 @@ function fromDrive() {
   while (files.hasNext()) {
     const f = files.next();
     if (!/\.xlsx?$/i.test(f.getName())) continue;
-    try { putFile_(f.getName(), f.getBlob().getBytes()); f.moveTo(done); } catch (e) { console.error(e); }
+    try {
+      const owner = f.getOwner() ? f.getOwner().getEmail() : 'Google Drive';
+      send_(f.getName(), f.getBlob().getBytes(), { source: 'Google Drive', from: owner, date: String(f.getDateCreated()) });
+      f.moveTo(done);
+    } catch (e) { console.error(e); }
   }
 }
 
