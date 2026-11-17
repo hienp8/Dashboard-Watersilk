@@ -5,6 +5,11 @@ on:
       - 'inbox/*.xls'
       - 'inbox/*.xlsx'
   workflow_dispatch:
+    inputs:
+      retry_failed:
+        description: 'Đưa lại các file trong inbox/failed vào xử lý (chọn khi đã sửa lỗi đọc file)'
+        type: boolean
+        default: false
 permissions:
   contents: write
 concurrency:
@@ -19,11 +24,26 @@ jobs:
         with:
           python-version: '3.12'
       - run: pip install openpyxl xlrd
-      - name: Đọc báo cáo trong inbox và cập nhật data/data.json
-        run: python scripts/ingest.py inbox data/data.json
-      - name: Lưu thay đổi
+      - name: Đưa lại file lỗi vào inbox (nếu được chọn)
+        if: ${{ github.event.inputs.retry_failed == 'true' }}
+        run: |
+          shopt -s nullglob dotglob
+          for f in inbox/failed/*; do git mv "$f" inbox/; done
+      - name: Đọc báo cáo, cập nhật data.json và lưu (tự thử lại khi bị từ chối push)
         run: |
           git config user.name "dashboard-bot"
           git config user.email "dashboard-bot@users.noreply.github.com"
-          git add -A
-          git diff --cached --quiet || (git commit -m "Cập nhật dữ liệu tự động từ báo cáo mới" && git push)
+          for i in 1 2 3 4 5; do
+            python scripts/ingest_reports.py inbox data
+            python scripts/ingest.py inbox data/data.json
+            git add -A
+            if git diff --cached --quiet; then echo "Không có thay đổi để lưu"; exit 0; fi
+            git commit -m "Cập nhật dữ liệu tự động từ báo cáo mới"
+            if git push origin HEAD:main; then exit 0; fi
+            echo "Push bị từ chối vì kho lưu có commit mới. Lấy bản mới và xử lý lại (lần $i)"
+            git fetch origin main
+            git reset --hard origin/main
+            sleep $((i*5))
+          done
+          echo "Không đẩy được sau 5 lần thử"
+          exit 1
