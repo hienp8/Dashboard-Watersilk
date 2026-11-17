@@ -104,7 +104,7 @@ def parse_weekly(rows, name):
 
 
 # ---------- 2) Báo cáo tiêu thụ & XNT ----------
-RGN = {'ĐB SÔNG HỒNG': 'ĐBSH', 'ĐỒNG BẰNG SÔNG HỒNG': 'ĐBSH', 'HÀ NỘI': 'Hà Nội', 'MIỀN TRUNG': 'Miền Trung',
+RGN = {'ĐBSH': 'ĐBSH', 'ĐB SÔNG HỒNG': 'ĐBSH', 'ĐỒNG BẰNG SÔNG HỒNG': 'ĐBSH', 'HÀ NỘI': 'Hà Nội', 'MIỀN TRUNG': 'Miền Trung',
        'MIỀN NÚI': 'Miền Núi', 'MIỀN NAM': 'Miền Nam', 'SIÊU THỊ': 'Siêu thị'}
 
 
@@ -226,6 +226,111 @@ def parse_sales(rows, h, name):
     return y, m, out
 
 
+# ---------- 5) Báo cáo tuần định dạng "BC TUAN NN" (cùng bố cục BC SX TT, số liệu theo tuần, đơn vị tấn) ----------
+def is_weekly2(S):
+    for rows in S.values():
+        t = ' '.join(txt(c) for r in rows[:3] for c in r)
+        if re.search(r'BÁO CÁO SẢN XUẤT VÀ TIÊU THỤ', t, re.I) and re.search(r'BC\s*TU[AẦ]N\s*\d+', t, re.I) and not re.search(r'THÁNG\s*\d+\s*/', t, re.I):
+            return rows
+    return None
+
+
+def guess_year(name, week):
+    m = re.search(r'(20\d\d)', name)
+    if m:
+        return int(m.group(1))
+    t = datetime.date.today()
+    return t.year - 1 if (t.month == 1 and week >= 50) else t.year
+
+
+def parse_weekly2(rows, name, W):
+    t = ' '.join(txt(c) for r in rows[:3] for c in r)
+    w = int(re.search(r'BC\s*TU[AẦ]N\s*(\d+)', t, re.I).group(1))
+    y = guess_year(name, w)
+    d0 = datetime.date.fromisocalendar(y, w, 1)
+    d1 = d0 + datetime.timedelta(days=6)
+    month = d1.month
+    dt = kh = None
+    for r in rows[:3]:
+        for j, c in enumerate(r):
+            s_ = txt(c)
+            if re.match(r'^Doanh thu tuần', s_, re.I):
+                dt = next((num(x) for x in r[j + 1:j + 3] if num(x) is not None), None)
+            if re.match(r'^Doanh thu tháng', s_, re.I):
+                kh = next((num(x) for x in r[j + 1:j + 3] if num(x) is not None), None)
+    hr = next((i for i, r in enumerate(rows[:10]) if any(txt(c).upper() == 'TIÊU THỤ' for c in r)), None)
+    if hr is None:
+        raise ValueError('không thấy tiêu đề cột TIÊU THỤ')
+    hdr = rows[hr]
+    sx0 = next(j for j, c in enumerate(hdr) if txt(c).upper() == 'SẢN XUẤT')
+    tt0 = next(j for j, c in enumerate(hdr) if txt(c).upper() == 'TIÊU THỤ')
+    prev = next((x for x in W['weeks'] if x['y'] == y and x['w'] == w - 1 and x.get('month') == month), None)
+    old = next((x for x in W['weeks'] if x['y'] == y and x['w'] == w), None)
+    codes = [('cl', r'^giấy tissue cuộn lớn'), ('tp', r'^giấy tissue thành phẩm'), ('ku', r'^khăn ướt'), ('pm', r'^kư papamama'), ('go', r'^gỗ dán')]
+    prods = {}
+    for r in rows[hr + 2:]:
+        nm = txt(cell(r, 1)).lower()
+        for code, rx in codes:
+            if re.search(rx, nm) and code not in prods:
+                mult = 1000.0 if code in ('cl', 'tp') else 1.0
+                g = lambda j: (num(cell(r, j)) * mult if num(cell(r, j)) is not None else None)
+                ky = g(tt0)
+                if ky is None and g(tt0 + 2) is not None:
+                    ky = 0.0   # ô tuần để trống nhưng có lũy kế: coi là 0
+                pv = prev['prods'].get(code, {}).get('thang') if prev else None
+                thang = (ky or 0) + (pv or 0) if ky is not None else None
+                khm = g(tt0 + 1)
+                prods[code] = {'dvt': txt(cell(r, 2)), 'ky': ky, 'thang': thang, 'luyke': g(tt0 + 2), 'kh': khm,
+                               'pct': (thang / khm * 100) if (thang is not None and khm) else None,
+                               'sx_ky': g(sx0), 'sx_luyke': g(sx0 + 2)}
+    if not prods:
+        raise ValueError('không thấy dòng sản phẩm')
+    if 'cl' in prods and 'tp' in prods:
+        a, b = prods['cl'], prods['tp']
+        add = lambda k: (a[k] or 0) + (b[k] or 0) if (a[k] is not None or b[k] is not None) else None
+        prods['tong'] = {'dvt': 'Tấn', 'ky': add('ky'), 'thang': add('thang'), 'luyke': add('luyke'), 'kh': add('kh'), 'pct': None, 'sx_ky': add('sx_ky'), 'sx_luyke': add('sx_luyke')}
+    if old:   # giữ các dòng chi tiết có ở báo cáo tuần cũ (ví dụ CLXK)
+        for k, v in old['prods'].items():
+            prods.setdefault(k, v)
+    return {'y': y, 'w': w, 'from': d0.isoformat(), 'to': d1.isoformat(), 'month': month, 'dt': dt, 'dt_kh': kh,
+            'dt_pct': (dt / kh * 100) if dt is not None and kh else None, 'dt_tuan': True, 'prods': prods, 'file': name}
+
+
+# ---------- 6) Xuất nhập tồn nhà phân phối nhiều tháng (Báo cáo XNT các KV) ----------
+def is_xnt_multi(S):
+    return [k for k in S if re.match(r'^\s*T0?\d{1,2}-\d{4}', k)] or None
+
+
+def parse_xnt_multi(S):
+    best = {}
+    for n in S:
+        m = re.match(r'^\s*T0?(\d{1,2})-(\d{4})', n)
+        if not m:
+            continue
+        sc = -1 if n.strip() == 'T6-2026(chuẩn) (2)' else 0 if 'chuẩn' in n else 1 if re.fullmatch(r'\s*T0?\d+-\d{4}\s*', n) else 2
+        k = (int(m.group(2)), int(m.group(1)))
+        if k not in best or sc < best[k][0]:
+            best[k] = (sc, n)
+    out = []
+    for (y, mo), (_, n) in sorted(best.items()):
+        reg = ''
+        for r in S[n][3:]:
+            a, b = txt(cell(r, 0)), txt(cell(r, 1))
+            if re.match(r'^KV\s', a, re.I):
+                k = re.sub(r'^KV\s+', '', a, flags=re.I).upper().strip()
+                reg = RGN.get(k, a[3:].title())
+                continue
+            if not b or not reg or re.match(r'^(TỔNG|CỘNG)', a, re.I) or re.match(r'^(TỔNG|CỘNG)|^\(|\)\s*\+|\+\s*\(', b, re.I):
+                continue
+            pv = isinstance(cell(r, 2), str) and cell(r, 2).strip()
+            vals = [num(c) for c in (r[3:8] if pv else r[2:]) if num(c) is not None]
+            if len(vals) >= 4:
+                out.append([y, mo, reg, b, round(vals[0]), round(vals[1]), round(vals[2]), round(vals[3])])
+    if not out:
+        raise ValueError('không đọc được dòng NPP nào')
+    return out
+
+
 def load(p, default):
     try:
         return json.load(open(p, encoding='utf-8'))
@@ -243,6 +348,7 @@ def main():
     W = load(os.path.join(data, 'weekly.json'), {'weeks': []})
     C = load(os.path.join(data, 'ctt.json'), {'snapshots': []})
     P = load(os.path.join(data, 'ctbh.json'), {'versions': []})
+    N = load(os.path.join(data, 'npp.json'), {'rows': []})
     dj = os.path.join(data, 'data.json')
     D = load(dj, None)
     logs = []
@@ -273,6 +379,15 @@ def main():
                 w = parse_weekly(rows, name)
                 W['weeks'] = [x for x in W['weeks'] if not (x['y'] == w['y'] and x['w'] == w['w'])] + [w]
                 kind, summ = 'Báo cáo tuần', 'Tuần %d/%d (%s đến %s)' % (w['w'], w['y'], w['from'], w['to'])
+            elif is_weekly2(S) is not None:
+                w = parse_weekly2(is_weekly2(S), name, W)
+                W['weeks'] = [x for x in W['weeks'] if not (x['y'] == w['y'] and x['w'] == w['w'])] + [w]
+                kind, summ = 'Báo cáo tuần', 'Tuần %d/%d (%s đến %s)' % (w['w'], w['y'], w['from'], w['to'])
+            elif is_xnt_multi(S):
+                rows_ = parse_xnt_multi(S)
+                ks = {(r[0], r[1]) for r in rows_}
+                N['rows'] = [r for r in N['rows'] if (r[0], r[1]) not in ks] + rows_
+                kind, summ = 'XNT nhà phân phối', '%d dòng, %d tháng (T%d/%d đến T%d/%d)' % (len(rows_), len(ks), min(ks)[1], min(ks)[0], max(ks)[1], max(ks)[0])
             elif is_ctbh(S) is not None:
                 v = parse_ctbh(is_ctbh(S), name)
                 P['versions'] = [x for x in P['versions'] if x['id'] != v['id']] + [v]
@@ -315,6 +430,9 @@ def main():
         save(os.path.join(data, 'weekly.json'), W)
         save(os.path.join(data, 'ctt.json'), C)
         save(os.path.join(data, 'ctbh.json'), P)
+        N['rows'].sort(key=lambda r: (r[0], r[1], r[2], r[3]))
+        if N['rows']:
+            save(os.path.join(data, 'npp.json'), N)
     if (logs or dirty) and D is not None:
         D.setdefault('log', []).extend(logs)
         D['log'] = D['log'][-500:]
