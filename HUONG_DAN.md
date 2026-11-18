@@ -23,3 +23,7 @@ Có thể xóa `tuan.html`, `ctt.html`, `ctbh.html` và thư mục `assets/` vì
 | Bảng giá, Giá đối thủ | `data.json`, `ctbh.json` | khi có thay đổi |
 
 Tab Cập nhật dữ liệu chỉ xem lịch sử và hướng dẫn; tải file qua Drive, Gmail hoặc thư mục `inbox/` trên GitHub.
+
+## Số tháng tạm từ báo cáo tuần (cập nhật)
+Khi báo cáo tuần mới nhất thuộc một tháng chưa có BC SX TT tháng, hệ thống tạo dòng tháng tạm: lũy kế tháng = lũy kế năm trong báo cáo tuần − lũy kế năm cuối tháng trước; tồn đầu lấy từ tồn cuối tháng trước; tồn cuối là ước tính (tồn đầu + sản xuất − tiêu thụ). Dòng tạm hiển thị ở Tổng quan, Sản xuất & tồn kho và Sản lượng tiêu thụ (đánh dấu *). Khi nạp BC SX TT của tháng đó, số chốt tự thay thế dòng tạm.
+Để có thêm kế hoạch sản xuất và kế hoạch năm từ báo cáo tuần, đưa lại file BC tuần mới nhất vào `inbox/` sau khi thay `scripts/ingest_reports.py`.

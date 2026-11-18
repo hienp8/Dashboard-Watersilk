@@ -282,7 +282,7 @@ def parse_weekly2(rows, name, W):
                 khm = g(tt0 + 1)
                 prods[code] = {'dvt': txt(cell(r, 2)), 'ky': ky, 'thang': thang, 'luyke': g(tt0 + 2), 'kh': khm,
                                'pct': (thang / khm * 100) if (thang is not None and khm) else None,
-                               'sx_ky': g(sx0), 'sx_luyke': g(sx0 + 2)}
+                               'sx_ky': g(sx0), 'sx_luyke': g(sx0 + 2), 'sx_kh': g(sx0 + 1), 'sx_luyke_kh': g(sx0 + 3), 'luyke_kh': g(tt0 + 3)}
     if not prods:
         raise ValueError('không thấy dòng sản phẩm')
     if 'cl' in prods and 'tp' in prods:
