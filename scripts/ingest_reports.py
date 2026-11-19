@@ -243,6 +243,44 @@ def guess_year(name, week):
     return t.year - 1 if (t.month == 1 and week >= 50) else t.year
 
 
+def _norm(c):
+    return re.sub(r'\s+', ' ', txt(c)).lower()
+
+
+def weekly2_cols(rows):
+    """Xác định cột theo tên tiêu đề nên đọc được cả file có và không có cột "Lũy kế tháng"."""
+    hr = next((i for i, r in enumerate(rows[:10]) if any(txt(c).upper() == 'TIÊU THỤ' for c in r)), None)
+    if hr is None:
+        raise ValueError('không thấy tiêu đề cột TIÊU THỤ')
+    hdr = rows[hr]
+    sub = rows[hr + 1] if hr + 1 < len(rows) else []
+    pos = lambda name: next((j for j, c in enumerate(hdr) if txt(c).upper() == name), None)
+    sx0, tt0, tc, td = pos('SẢN XUẤT'), pos('TIÊU THỤ'), pos('TỒN CUỐI'), pos('TỒN ĐẦU')
+    if sx0 is None:
+        raise ValueError('không thấy tiêu đề cột SẢN XUẤT')
+
+    def group(a, b):
+        cols = {}
+        for j in range(a, b):
+            t = _norm(cell(sub, j))
+            if not t:
+                continue
+            if 'lũy kế năm' in t:
+                k = 'luyke' if 'thực hiện' in t else 'luyke_kh' if 'kế hoạch' in t else None
+            elif 'lũy kế tháng' in t:
+                k = 'thang'
+            elif 'kế hoạch' in t:
+                k = 'kh'
+            elif 'thực hiện' in t:
+                k = 'ky'
+            else:
+                k = None
+            if k and k not in cols:
+                cols[k] = j
+        return cols
+    return hr, group(sx0, tt0), group(tt0, tc if tc is not None else len(sub)), td, tc
+
+
 def parse_weekly2(rows, name, W):
     t = ' '.join(txt(c) for r in rows[:3] for c in r)
     w = int(re.search(r'BC\s*TU[AẦ]N\s*(\d+)', t, re.I).group(1))
@@ -250,20 +288,21 @@ def parse_weekly2(rows, name, W):
     d0 = datetime.date.fromisocalendar(y, w, 1)
     d1 = d0 + datetime.timedelta(days=6)
     month = d1.month
-    dt = kh = None
+    dt = dtm = kh = None
     for r in rows[:3]:
         for j, c in enumerate(r):
-            s_ = txt(c)
-            if re.match(r'^Doanh thu tuần', s_, re.I):
-                dt = next((num(x) for x in r[j + 1:j + 3] if num(x) is not None), None)
-            if re.match(r'^Doanh thu tháng', s_, re.I):
-                kh = next((num(x) for x in r[j + 1:j + 3] if num(x) is not None), None)
-    hr = next((i for i, r in enumerate(rows[:10]) if any(txt(c).upper() == 'TIÊU THỤ' for c in r)), None)
-    if hr is None:
-        raise ValueError('không thấy tiêu đề cột TIÊU THỤ')
-    hdr = rows[hr]
-    sx0 = next(j for j, c in enumerate(hdr) if txt(c).upper() == 'SẢN XUẤT')
-    tt0 = next(j for j, c in enumerate(hdr) if txt(c).upper() == 'TIÊU THỤ')
+            tt_ = _norm(c)
+            nxt = next((num(x) for x in r[j + 1:j + 3] if num(x) is not None), None)
+            if tt_.startswith('doanh thu tuần'):
+                dt = nxt
+            elif tt_.startswith('doanh thu tháng'):
+                if 'kế hoạch' in tt_:
+                    kh = nxt
+                else:
+                    dtm = nxt
+    hr, sxc, ttc, td, tc = weekly2_cols(rows)
+    if 'ky' not in ttc:
+        raise ValueError('không thấy cột tiêu thụ thực hiện')
     prev = next((x for x in W['weeks'] if x['y'] == y and x['w'] == w - 1 and x.get('month') == month), None)
     old = next((x for x in W['weeks'] if x['y'] == y and x['w'] == w), None)
     codes = [('cl', r'^giấy tissue cuộn lớn'), ('tp', r'^giấy tissue thành phẩm'), ('ku', r'^khăn ướt'), ('pm', r'^kư papamama'), ('go', r'^gỗ dán')]
@@ -273,27 +312,42 @@ def parse_weekly2(rows, name, W):
         for code, rx in codes:
             if re.search(rx, nm) and code not in prods:
                 mult = 1000.0 if code in ('cl', 'tp') else 1.0
-                g = lambda j: (num(cell(r, j)) * mult if num(cell(r, j)) is not None else None)
-                ky = g(tt0)
-                if ky is None and g(tt0 + 2) is not None:
+
+                def g(cols, key):
+                    j = cols.get(key)
+                    v = num(cell(r, j)) if j is not None else None
+                    return v * mult if v is not None else None
+                ky = g(ttc, 'ky')
+                if ky is None and g(ttc, 'luyke') is not None:
                     ky = 0.0   # ô tuần để trống nhưng có lũy kế: coi là 0
-                pv = prev['prods'].get(code, {}).get('thang') if prev else None
-                thang = (ky or 0) + (pv or 0) if ky is not None else None
-                khm = g(tt0 + 1)
-                prods[code] = {'dvt': txt(cell(r, 2)), 'ky': ky, 'thang': thang, 'luyke': g(tt0 + 2), 'kh': khm,
-                               'pct': (thang / khm * 100) if (thang is not None and khm) else None,
-                               'sx_ky': g(sx0), 'sx_luyke': g(sx0 + 2), 'sx_kh': g(sx0 + 1), 'sx_luyke_kh': g(sx0 + 3), 'luyke_kh': g(tt0 + 3)}
+                thang = g(ttc, 'thang')
+                src = 'file' if thang is not None else 'calc'
+                if thang is None and ky is not None:
+                    pv = prev['prods'].get(code, {}).get('thang') if prev else None
+                    thang = ky + (pv or 0)
+                khm = g(ttc, 'kh')
+                prods[code] = {'dvt': txt(cell(r, 2)), 'ky': ky, 'thang': thang, 'thang_src': src, 'luyke': g(ttc, 'luyke'), 'kh': khm,
+                               'luyke_kh': g(ttc, 'luyke_kh'), 'pct': (thang / khm * 100) if (thang is not None and khm) else None,
+                               'sx_ky': g(sxc, 'ky'), 'sx_thang': g(sxc, 'thang'), 'sx_luyke': g(sxc, 'luyke'), 'sx_kh': g(sxc, 'kh'),
+                               'sx_luyke_kh': g(sxc, 'luyke_kh'),
+                               'ton_dau': (num(cell(r, td)) * mult if td is not None and num(cell(r, td)) is not None else None),
+                               'ton_cuoi': (num(cell(r, tc)) * mult if tc is not None and num(cell(r, tc)) is not None else None)}
     if not prods:
         raise ValueError('không thấy dòng sản phẩm')
     if 'cl' in prods and 'tp' in prods:
         a, b = prods['cl'], prods['tp']
-        add = lambda k: (a[k] or 0) + (b[k] or 0) if (a[k] is not None or b[k] is not None) else None
-        prods['tong'] = {'dvt': 'Tấn', 'ky': add('ky'), 'thang': add('thang'), 'luyke': add('luyke'), 'kh': add('kh'), 'pct': None, 'sx_ky': add('sx_ky'), 'sx_luyke': add('sx_luyke')}
+
+        def add(k):
+            return (a[k] or 0) + (b[k] or 0) if (a[k] is not None or b[k] is not None) else None
+        prods['tong'] = {'dvt': 'Tấn', 'ky': add('ky'), 'thang': add('thang'), 'thang_src': a['thang_src'], 'luyke': add('luyke'), 'kh': add('kh'),
+                         'luyke_kh': add('luyke_kh'), 'pct': None, 'sx_ky': add('sx_ky'), 'sx_thang': add('sx_thang'), 'sx_luyke': add('sx_luyke'),
+                         'sx_kh': add('sx_kh'), 'sx_luyke_kh': add('sx_luyke_kh'), 'ton_dau': None, 'ton_cuoi': None}
     if old:   # giữ các dòng chi tiết có ở báo cáo tuần cũ (ví dụ CLXK)
         for k, v in old['prods'].items():
             prods.setdefault(k, v)
-    return {'y': y, 'w': w, 'from': d0.isoformat(), 'to': d1.isoformat(), 'month': month, 'dt': dt, 'dt_kh': kh,
-            'dt_pct': (dt / kh * 100) if dt is not None and kh else None, 'dt_tuan': True, 'prods': prods, 'file': name}
+    base = dtm if dtm is not None else dt
+    return {'y': y, 'w': w, 'from': d0.isoformat(), 'to': d1.isoformat(), 'month': month, 'dt': dt, 'dt_thang': dtm, 'dt_kh': kh,
+            'dt_pct': (base / kh * 100) if base is not None and kh else None, 'dt_tuan': True, 'prods': prods, 'file': name}
 
 
 # ---------- 6) Xuất nhập tồn nhà phân phối nhiều tháng (Báo cáo XNT các KV) ----------

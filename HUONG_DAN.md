@@ -27,3 +27,11 @@ Tab Cập nhật dữ liệu chỉ xem lịch sử và hướng dẫn; tải fil
 ## Số tháng tạm từ báo cáo tuần (cập nhật)
 Khi báo cáo tuần mới nhất thuộc một tháng chưa có BC SX TT tháng, hệ thống tạo dòng tháng tạm: lũy kế tháng = lũy kế năm trong báo cáo tuần − lũy kế năm cuối tháng trước; tồn đầu lấy từ tồn cuối tháng trước; tồn cuối là ước tính (tồn đầu + sản xuất − tiêu thụ). Dòng tạm hiển thị ở Tổng quan, Sản xuất & tồn kho và Sản lượng tiêu thụ (đánh dấu *). Khi nạp BC SX TT của tháng đó, số chốt tự thay thế dòng tạm.
 Để có thêm kế hoạch sản xuất và kế hoạch năm từ báo cáo tuần, đưa lại file BC tuần mới nhất vào `inbox/` sau khi thay `scripts/ingest_reports.py`.
+
+## Báo cáo tuần có cột "Lũy kế tháng" (định dạng mới)
+File `BC tuan NN` có thêm cột "Lũy kế tháng" trước cột "Kế hoạch" ở cả SẢN XUẤT và TIÊU THỤ, và ô "Doanh thu tháng" (thực hiện, lũy kế) cạnh "Doanh thu tháng (kế hoạch)". Bộ đọc nhận cột theo tên tiêu đề nên đọc được cả file có và không có các cột này:
+- Có cột Lũy kế tháng: dùng đúng số trong file cho sản xuất và tiêu thụ tháng.
+- Không có: tự tính = lũy kế năm trong báo cáo tuần − lũy kế năm cuối tháng trước.
+- Ô "Doanh thu tháng" là nguồn duy nhất để cộng doanh thu tháng đang chạy (ví dụ 12.143.000 nghìn đồng = 12,14 tỷ đến tuần 46). Nếu thiếu ô này, trang Tổng quan hiện cảnh báo thay vì tự cộng các tuần vì doanh thu từng tuần không cộng khớp.
+- Nếu bạn điền cột Tồn đầu và Tồn cuối trong file tuần, hệ thống dùng đúng số đó thay cho số ước tính.
+Sau khi thay `scripts/ingest_reports.py` và `index.html`, nạp lại file BC tuần mới nhất (đã có các cột này) vào `inbox/`.
