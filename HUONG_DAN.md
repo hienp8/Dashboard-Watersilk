@@ -35,3 +35,10 @@ File `BC tuan NN` có thêm cột "Lũy kế tháng" trước cột "Kế hoạc
 - Ô "Doanh thu tháng" là nguồn duy nhất để cộng doanh thu tháng đang chạy (ví dụ 12.143.000 nghìn đồng = 12,14 tỷ đến tuần 46). Nếu thiếu ô này, trang Tổng quan hiện cảnh báo thay vì tự cộng các tuần vì doanh thu từng tuần không cộng khớp.
 - Nếu bạn điền cột Tồn đầu và Tồn cuối trong file tuần, hệ thống dùng đúng số đó thay cho số ước tính.
 Sau khi thay `scripts/ingest_reports.py` và `index.html`, nạp lại file BC tuần mới nhất (đã có các cột này) vào `inbox/`.
+
+## Quy tắc tồn kho của tháng đang chạy
+- Tồn đầu tháng = tồn cuối tháng trước (số chốt).
+- Tồn cuối tạm = tồn đầu + sản xuất − tiêu thụ. Riêng cuộn lớn: tồn đầu + sản xuất − tiêu thụ − sản xuất thành phẩm (phần cuộn lớn chuyển sang làm thành phẩm).
+- Nếu file báo cáo tuần có điền cột Tồn cuối thì dùng đúng số đó.
+- Khi nạp BC SX TT của tháng, số chốt trong báo cáo thay thế hoàn toàn số tạm.
+Kiểm chứng trên 10 tháng đã chốt của 2026: thành phẩm khớp tuyệt đối; cuộn lớn lệch trung bình khoảng 30 tấn (tháng 10 chỉ lệch 1,2 tấn), thấp hơn nhiều so với cách không trừ sản xuất thành phẩm (lệch 225–370 tấn mỗi tháng).
